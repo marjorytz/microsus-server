@@ -1,4 +1,4 @@
-package server;
+package model;
 
 public enum EstadoPaciente {
     EM_FILA,

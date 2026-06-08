@@ -1,18 +1,18 @@
-package server;
+package http;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HTTPParser {
+public class HttpParser {
     private Map<String, String> headers = new HashMap<>();
     private String method;
     private String path;
     private String httpVersion;
     private String body;
 
-    public HTTPParser() {
+    public HttpParser() {
         headers = new HashMap<>();
     }
 
@@ -47,7 +47,7 @@ public class HTTPParser {
 
             int bytesLidos = in.read(buffer, 0, tamBody);
 
-            if(bytesLidos > 0) 
+            if (bytesLidos > 0)
                 this.body = new String(buffer);
         }
     }

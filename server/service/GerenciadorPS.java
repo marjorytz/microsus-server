@@ -1,8 +1,11 @@
-package server;
+package service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import model.EstadoPaciente;
+import model.Paciente;
 
 public class GerenciadorPS {
     private final Map<Integer, Paciente> mapaPacientes = new ConcurrentHashMap<>();
@@ -46,7 +49,8 @@ public class GerenciadorPS {
         }
 
         if (paciente.getEstado() != EstadoPaciente.EM_ATENDIMENTO) {
-            throw new IllegalStateException("Paciente está EM_FILA. Não é possível finalizar sem antes chamar para atendimento.");
+            throw new IllegalStateException(
+                    "Paciente está EM_FILA. Não é possível finalizar sem antes chamar para atendimento.");
         }
 
         if (paciente.getEstado() == EstadoPaciente.ATENDIDO) {
