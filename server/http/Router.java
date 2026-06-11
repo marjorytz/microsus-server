@@ -7,6 +7,7 @@ import utils.JsonUtil;
 import java.io.*;
 import java.net.Socket;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class Router {
 
@@ -36,23 +37,95 @@ public class Router {
                 try {
                     Paciente novoPaciente = gerenciador.cadastrarPaciente(nome, sintoma, prioridade);
                     HttpResponse.enviar(out, "201 Created", "application/json", novoPaciente.toJson());
+
+                    System.out.println("Requisição POST /pacientes recebida");
                 } catch (IllegalArgumentException e) {
                     HttpResponse.enviar(out, "400 Bad Request", "application/json",
                             "{\"erro\":\"" + e.getMessage() + "\"}");
                 }
-
-                System.out.println("Requisição POST recebida");
-
-                // Rota 2: Visualizar Fila
-            } else if (metodo.equals("GET") && path.equals("/fila")) {
+            }
+            // Rota 2: Visualizar Fila
+            else if (metodo.equals("GET") && path.equals("/fila")) {
                 List<Paciente> listaFila = gerenciador.getFilaOrdenada();
                 String paginaHtml = HttpResponse.construirHtmlFila(listaFila);
                 HttpResponse.enviar(out, "200 OK", "text/html", paginaHtml);
-
                 System.out.println("Requisição GET recebida");
+            }
+            // Rota 3: Visualizar paciente por ID
+            else if (metodo.equals("GET") && path.startsWith("/pacientes/")) {
 
-                // Rota Padrão (404)
-            } else {
+                try {
+                    String idParam = path.split("/")[2];
+                    int idInt = Integer.parseInt(idParam);
+
+                    Paciente paciente = gerenciador.buscarPaciente(idInt);
+
+                    if (paciente != null) {
+                        HttpResponse.enviar(out, "200 OK", "application/json", paciente.toJson());
+                        System.out.println("Requisição GET /pacientes/" + idInt + " recebida");
+                    } else {
+                        HttpResponse.enviar(out, "404 Not Found", "application/json",
+                                "{\"erro\":\"Paciente não encontrado.\"}");
+                    }
+
+                } catch (IllegalArgumentException e) {
+                    HttpResponse.enviar(out, "400 Bad Request", "application/json",
+                            "{\"erro\":\"ID inválido.\"}");
+                }
+            }
+            // Rota 4: Chamar Próximo Paciente
+            else if (metodo.equals("POST") && path.equals("/chamar")) {
+
+                try {
+                    Paciente proxPaciente = gerenciador.chamarProximo();
+
+                    if (proxPaciente != null) {
+
+                        HttpResponse.enviar(out, "200 OK", "application/json", proxPaciente.toJson());
+                        System.out.println("Requisição POST /chamar recebida");
+                    } else {
+                        HttpResponse.enviar(out, "404 Not Found", "application/json",
+                                "{\"erro\":\"Nenhum paciente na fila.\"}");
+                    }
+                } catch (IllegalArgumentException e) {
+                    HttpResponse.enviar(out, "400 Bad Request", "application/json",
+                            "{\"erro\":\"" + e.getMessage() + "\"}");
+                }
+            }
+            // Rota 5: Finalizar Atendimento
+            else if (metodo.equals("POST") && path.startsWith("/pacientes/") && path.endsWith("/finalizar")) {
+
+                String prognostico = JsonUtil.extrairCampo(body, "prognostico");
+
+                try {
+                    String idParam = path.split("/")[2];
+                    int idInt = Integer.parseInt(idParam);
+
+                    Paciente pacienteFinalizado = gerenciador.finalizarAtendimento(idInt, prognostico);
+                    HttpResponse.enviar(out, "200 OK", "application/json", pacienteFinalizado.toJson());
+                    System.out.println("Requisição POST /finalizar recebida");
+
+                } catch (NumberFormatException e) {
+                    HttpResponse.enviar(out, "400 Bad Request", "application/json", 
+                    "{\"erro\":\"ID inválido.\"}");
+                } catch (NoSuchElementException e) {
+                    // 404 se o paciente não existe
+                    HttpResponse.enviar(out, "404 Not Found", "application/json",
+                            "{\"erro\":\"" + e.getMessage() + "\"}");
+                } catch (IllegalArgumentException e) {
+                    HttpResponse.enviar(out, "409 Conflict", "application/json",
+                            "{\"erro\":\"" + e.getMessage() + "\"}");
+                }
+            }
+            // Rota 6: Mostrar Estatísticas
+            else if (metodo.equals("GET") && path.equals("/estatisticas")) {
+
+                String estatisticas = gerenciador.getEstatisticasJson();
+                HttpResponse.enviar(out, "200 OK", "application/json", estatisticas);
+                System.out.println("Requisição GET recebida");
+            }
+            // Rota Padrão (404)
+            else {
                 HttpResponse.enviar(out, "404 Not Found", "application/json", "{\"erro\":\"Rota nao encontrada\"}");
             }
 
