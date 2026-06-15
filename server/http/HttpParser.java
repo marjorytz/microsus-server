@@ -40,7 +40,7 @@ public class HttpParser {
             }
         }
 
-        // Extrair body
+        // Extrair o body
         if (this.headers.containsKey("Content-Length")) {
             int tamBody = Integer.parseInt(this.headers.get("Content-Length"));
             char[] buffer = new char[tamBody];

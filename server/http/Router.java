@@ -17,6 +17,7 @@ public class Router {
         try (
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true)) {
+            
             HttpParser parser = new HttpParser();
             parser.parse(in);
 
@@ -55,9 +56,12 @@ public class Router {
             else if (metodo.equals("GET") && path.startsWith("/pacientes/")) {
 
                 try {
-                    String idParam = path.split("/")[2];
-                    int idInt = Integer.parseInt(idParam);
+                    String[] idParam = path.split("/");
+                    if (idParam.length < 3) {
+                        throw new NumberFormatException("ID Ausente");
+                    }
 
+                    int idInt = Integer.parseInt(idParam[2]);
                     Paciente paciente = gerenciador.buscarPaciente(idInt);
 
                     if (paciente != null) {
@@ -70,7 +74,7 @@ public class Router {
 
                 } catch (IllegalArgumentException e) {
                     HttpResponse.enviar(out, "400 Bad Request", "application/json",
-                            "{\"erro\":\"ID inválido.\"}");
+                            "{\"erro\":\"ID inválido ou ausente.\"}");
                 }
             }
             // Rota 4: Chamar Próximo Paciente
@@ -80,7 +84,6 @@ public class Router {
                     Paciente proxPaciente = gerenciador.chamarProximo();
 
                     if (proxPaciente != null) {
-
                         HttpResponse.enviar(out, "200 OK", "application/json", proxPaciente.toJson());
                         System.out.println("Requisição POST /chamar recebida");
                     } else {
@@ -98,16 +101,20 @@ public class Router {
                 String prognostico = JsonUtil.extrairCampo(body, "prognostico");
 
                 try {
-                    String idParam = path.split("/")[2];
-                    int idInt = Integer.parseInt(idParam);
+                    String[] idParam = path.split("/");
+                    if (idParam.length < 4) {
+                        throw new NumberFormatException("ID Ausente");
+                    }
 
+                    int idInt = Integer.parseInt(idParam[2]);
                     Paciente pacienteFinalizado = gerenciador.finalizarAtendimento(idInt, prognostico);
+
                     HttpResponse.enviar(out, "200 OK", "application/json", pacienteFinalizado.toJson());
                     System.out.println("Requisição POST /finalizar recebida");
 
                 } catch (NumberFormatException e) {
-                    HttpResponse.enviar(out, "400 Bad Request", "application/json", 
-                    "{\"erro\":\"ID inválido.\"}");
+                    HttpResponse.enviar(out, "400 Bad Request", "application/json",
+                            "{\"erro\":\"ID inválido ou ausente.\"}");
                 } catch (NoSuchElementException e) {
                     // 404 se o paciente não existe
                     HttpResponse.enviar(out, "404 Not Found", "application/json",
