@@ -112,7 +112,7 @@ public class Router {
                     // 404 se o paciente não existe
                     HttpResponse.enviar(out, "404 Not Found", "application/json",
                             "{\"erro\":\"" + e.getMessage() + "\"}");
-                } catch (IllegalArgumentException e) {
+                } catch (IllegalStateException e) {
                     HttpResponse.enviar(out, "409 Conflict", "application/json",
                             "{\"erro\":\"" + e.getMessage() + "\"}");
                 }
