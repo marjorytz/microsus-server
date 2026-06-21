@@ -18,7 +18,10 @@ public class Server {
                 // Aguarda a conexão de um cliente
                 Socket clientSocket = serverSocket.accept();
 
-                router.processarRequisicao(clientSocket);
+                new Thread(() -> {
+                    router.processarRequisicao(clientSocket);
+                }).start();
+                
             }
         } catch (IOException e) {
             System.err.println("Erro crítico no servidor: " + e.getMessage());

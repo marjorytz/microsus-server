@@ -1,5 +1,6 @@
 package http;
 
+import service.GerenciadorAuth;
 import service.GerenciadorPS;
 import model.Paciente;
 import utils.JsonUtil;
@@ -12,12 +13,13 @@ import java.util.NoSuchElementException;
 public class Router {
 
     private final GerenciadorPS gerenciador = new GerenciadorPS();
+    private final GerenciadorAuth auth = new GerenciadorAuth();
 
     public void processarRequisicao(Socket socket) {
         try (
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true)) {
-            
+
             HttpParser parser = new HttpParser();
             parser.parse(in);
 
@@ -28,8 +30,35 @@ public class Router {
             if (metodo == null || path == null)
                 return;
 
+            // Barra qualquer POST que não seja a rota login
+            if (metodo.equals("POST") && !path.equals("/login")) {
+                String token = parser.getHeader("Authorization");
+
+                if (!auth.validarToken(token)) {
+                    HttpResponse.enviar(out, "401 Unauthorized", "application/json",
+                            "{\"erro\":\"Acesso negado. Chave invalida ou ausente.\"}");
+                    return;
+                }
+            }
+
+            // Rota Bônus: Login
+            if (metodo.equals("POST") && path.equals("/login")) {
+                String usuario = JsonUtil.extrairCampo(body, "usuario");
+                String senha = JsonUtil.extrairCampo(body, "senha");
+
+                String token = auth.autenticar(usuario, senha);
+
+                if (token != null) {
+                    HttpResponse.enviar(out, "200 OK", "application/json", "{\"chave\":\"" + token + "\"}");
+                    System.out.println("Requisição POST /login recebida");
+                } else {
+                    HttpResponse.enviar(out, "403 Forbidden", "application/json",
+                            "{\"erro\":\"Credenciais invalidas\"}");
+                }
+            }
+
             // Rota 1: Cadastrar Paciente
-            if (metodo.equals("POST") && path.equals("/pacientes")) {
+            else if (metodo.equals("POST") && path.equals("/pacientes")) {
 
                 String nome = JsonUtil.extrairCampo(body, "nome");
                 String sintoma = JsonUtil.extrairCampo(body, "sintoma");
@@ -45,6 +74,7 @@ public class Router {
                             "{\"erro\":\"" + e.getMessage() + "\"}");
                 }
             }
+
             // Rota 2: Visualizar Fila
             else if (metodo.equals("GET") && path.equals("/fila")) {
                 List<Paciente> listaFila = gerenciador.getFilaOrdenada();
@@ -52,6 +82,7 @@ public class Router {
                 HttpResponse.enviar(out, "200 OK", "text/html", paginaHtml);
                 System.out.println("Requisição GET recebida");
             }
+
             // Rota 3: Visualizar paciente por ID
             else if (metodo.equals("GET") && path.startsWith("/pacientes/")) {
 
@@ -77,6 +108,7 @@ public class Router {
                             "{\"erro\":\"ID inválido ou ausente.\"}");
                 }
             }
+
             // Rota 4: Chamar Próximo Paciente
             else if (metodo.equals("POST") && path.equals("/chamar")) {
 
@@ -95,6 +127,7 @@ public class Router {
                             "{\"erro\":\"" + e.getMessage() + "\"}");
                 }
             }
+
             // Rota 5: Finalizar Atendimento
             else if (metodo.equals("POST") && path.startsWith("/pacientes/") && path.endsWith("/finalizar")) {
 
@@ -124,6 +157,7 @@ public class Router {
                             "{\"erro\":\"" + e.getMessage() + "\"}");
                 }
             }
+
             // Rota 6: Mostrar Estatísticas
             else if (metodo.equals("GET") && path.equals("/estatisticas")) {
 
@@ -131,6 +165,7 @@ public class Router {
                 HttpResponse.enviar(out, "200 OK", "application/json", estatisticas);
                 System.out.println("Requisição GET recebida");
             }
+            
             // Rota Padrão (404)
             else {
                 HttpResponse.enviar(out, "404 Not Found", "application/json", "{\"erro\":\"Rota nao encontrada\"}");
